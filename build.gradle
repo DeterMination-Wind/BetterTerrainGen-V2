@@ -1,0 +1,198 @@
+plugins {
+    id "java"
+}
+
+group = "determinationwind.betterterraingen"
+version = "0.0.0"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+def mindustryVersion = (findProperty("mindustryVersion") ?: "v159").toString()
+def localMindustryCoreJar = new File(rootDir.parentFile, "Mindustry-master/core/build/libs/core-release.jar")
+def localArcCoreJar = new File(rootDir.parentFile, "Arc/arc-core/build/libs/arc-core-1.0.jar")
+def localMindustryDesktopJar = new File(rootDir.parentFile, "Mindustry-master/desktop/build/libs/Mindustry.jar")
+def releaseVersion = (findProperty("releaseVersion") ?: "1.0.0").toString()
+def releaseArtifactName = "BetterTerrainGen-V2-${releaseVersion}.jar"
+def releaseOutputDir = new File(rootDir.parentFile, "构建/BetterTerrainGen-V2")
+
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+    if (localMindustryCoreJar.exists()) {
+        def localMindustryClasspath = [localMindustryCoreJar]
+        if (localArcCoreJar.exists()) {
+            localMindustryClasspath.add(localArcCoreJar)
+        } else if (localMindustryDesktopJar.exists()) {
+            localMindustryClasspath.add(localMindustryDesktopJar)
+        }
+        compileOnly files(localMindustryClasspath)
+        testImplementation files(localMindustryClasspath)
+    } else {
+        compileOnly "com.github.Anuken.Mindustry:core:${mindustryVersion}"
+        testImplementation "com.github.Anuken.Mindustry:core:${mindustryVersion}"
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(17)
+}
+
+tasks.register("algorithmTest", JavaExec) {
+    group = "verification"
+    description = "Runs deterministic natural-water generator and filter integration checks."
+    dependsOn tasks.named("testClasses")
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "betterterraingen.v2.NaturalWaterGeneratorTest"
+}
+
+tasks.named("test") {
+    failOnNoDiscoveredTests = false
+}
+
+tasks.named("check") {
+    dependsOn tasks.named("algorithmTest")
+}
+
+def isWindows = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")
+
+def findD8 = {
+    def explicit = System.getenv("D8_PATH")
+    if (explicit) {
+        def file = new File(explicit)
+        if (file.exists()) return file
+    }
+
+    def sdkRoot = System.getenv("ANDROID_SDK_ROOT") ?: System.getenv("ANDROID_HOME")
+    if (sdkRoot) {
+        def buildToolsDir = new File(sdkRoot, "build-tools")
+        if (buildToolsDir.isDirectory()) {
+            def toolName = isWindows ? "d8.bat" : "d8"
+            def candidates = (buildToolsDir.listFiles() ?: [])
+                .findAll { it.isDirectory() }
+                .sort { a, b -> b.name <=> a.name }
+            for (def dir : candidates) {
+                def executable = new File(dir, toolName)
+                if (executable.exists()) return executable
+            }
+        }
+    }
+
+    if (isWindows) {
+        def candidates = (rootDir.parentFile.listFiles() ?: [])
+            .findAll { it.isDirectory() && it.name.startsWith("commandlinetools-win-") }
+            .sort { a, b -> b.name <=> a.name }
+        for (def dir : candidates) {
+            def executable = new File(dir, "cmdline-tools/bin/d8.bat")
+            if (executable.exists()) return executable
+        }
+    }
+
+    return null
+}
+
+def findAndroidJar = {
+    def sdkRoot = System.getenv("ANDROID_SDK_ROOT") ?: System.getenv("ANDROID_HOME")
+    if (sdkRoot) {
+        def platforms = new File(sdkRoot, "platforms")
+        def candidates = (platforms.listFiles() ?: [])
+            .findAll { it.isDirectory() && new File(it, "android.jar").exists() }
+            .sort { a, b -> b.name <=> a.name }
+        if (!candidates.isEmpty()) return new File(candidates.first(), "android.jar")
+    }
+
+    def workspaceCandidates = [
+        new File(rootDir.parentFile, "Arc/backends/backend-android/libs/android.jar"),
+        new File(rootDir.parentFile, "MindustryX-main/Arc/backends/backend-android/libs/android.jar")
+    ]
+    return workspaceCandidates.find { it.exists() }
+}
+
+def androidDexOutDir = layout.buildDirectory.dir("d8").get().asFile
+
+tasks.register("d8InputJar", Jar) {
+    group = "build"
+    description = "Builds the desktop bytecode input consumed by D8."
+    dependsOn tasks.named("classes")
+    archiveFileName = "BetterTerrainGen-V2-d8-input.jar"
+    destinationDirectory = layout.buildDirectory.dir("d8-input")
+    from(sourceSets.main.output)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.register("dexAndroid", Exec) {
+    group = "build"
+    description = "Converts the mod classes to Android classes.dex."
+    dependsOn tasks.named("d8InputJar")
+
+    doFirst {
+        def d8 = findD8()
+        if (d8 == null) {
+            throw new GradleException("D8 not found. Set D8_PATH, ANDROID_SDK_ROOT, or ANDROID_HOME.")
+        }
+
+        delete(androidDexOutDir)
+        androidDexOutDir.mkdirs()
+        def inputJar = tasks.named("d8InputJar").get().archiveFile.get().asFile
+
+        commandLine d8.absolutePath
+        args "--min-api", "14", "--release", "--output", androidDexOutDir.absolutePath
+        def androidJar = findAndroidJar()
+        if (androidJar != null) args "--lib", androidJar.absolutePath
+        configurations.compileClasspath.files.each { library ->
+            args "--lib", library.absolutePath
+        }
+        args inputJar.absolutePath
+    }
+}
+
+tasks.register("jarMerged", Jar) {
+    group = "build"
+    description = "Packages one local dev jar for desktop and Android."
+    dependsOn tasks.named("classes")
+    dependsOn tasks.named("dexAndroid")
+    archiveFileName = releaseArtifactName
+    destinationDirectory = layout.buildDirectory.dir("libs")
+    from(sourceSets.main.output)
+    from(androidDexOutDir) {
+        include "classes.dex"
+    }
+    from(projectDir) {
+        include "mod.json"
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.register("copyReleaseArtifact", Copy) {
+    group = "build"
+    description = "Copies the release jar to the workspace artifact directory."
+    dependsOn tasks.named("jarMerged")
+    from(tasks.named("jarMerged").flatMap { it.archiveFile })
+    into(releaseOutputDir)
+    rename { releaseArtifactName }
+    doNotTrackState("The workspace artifact folder is an explicit local delivery target.")
+}
+
+tasks.register("copyReleaseArtifactToDist", Copy) {
+    group = "build"
+    description = "Copies the release jar to the project dist directory."
+    dependsOn tasks.named("jarMerged")
+    from(tasks.named("jarMerged").flatMap { it.archiveFile })
+    into(new File(projectDir, "dist"))
+    rename { releaseArtifactName }
+    doNotTrackState("The dist folder is an explicit release delivery target.")
+}
+
+tasks.register("releaseBuild") {
+    group = "build"
+    description = "Runs checks and produces the desktop+Android release artifact."
+    dependsOn tasks.named("check")
+    dependsOn tasks.named("copyReleaseArtifact")
+    dependsOn tasks.named("copyReleaseArtifactToDist")
+}
