@@ -260,7 +260,7 @@ public final class NaturalWaterGeneratorTest {
 
             Object filter = filterClass.getConstructor().newInstance();
             Object[] options = (Object[]) filterClass.getMethod("options").invoke(filter);
-            check(options.length == 10, "filter must expose all ten editor options");
+            check(options.length == 14, "filter must expose all editor options");
             for (Object option : options) {
                 check(option.getClass().getClassLoader() == loader,
                     "filter option must be implemented by the mod ClassLoader: " + option.getClass().getName());
