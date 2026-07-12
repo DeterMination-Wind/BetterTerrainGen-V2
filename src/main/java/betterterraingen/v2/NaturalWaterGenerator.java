@@ -62,8 +62,10 @@ public final class NaturalWaterGenerator {
             croppedWater = candidate.croppedWater;
         }
 
-        byte[] paddedLayers = distanceLayers(water, paddedWidth, paddedHeight,
-            config.shoalWidth, config.shallowWidth);
+        byte[] paddedLayers = distanceLayers(water, paddedWidth, paddedHeight, config.seed,
+            config.shoalWidth, config.shallowWidth,
+            config.depthWarpScale, config.depthWarpMag,
+            config.shoalFragmentation, config.shallowFragmentation);
         byte[] layers = cropLayers(paddedLayers, paddedWidth, padding, width, height);
         return new Result(width, height, layers, croppedWater);
     }
@@ -427,7 +429,10 @@ public final class NaturalWaterGenerator {
         return x == 0 || y == 0 || x == width - 1 || y == height - 1;
     }
 
-    private static byte[] distanceLayers(boolean[] water, int width, int height, float shoalWidth, float shallowWidth) {
+    private static byte[] distanceLayers(boolean[] water, int width, int height, int seed,
+                                          float shoalWidth, float shallowWidth,
+                                          float depthWarpScale, float depthWarpMag,
+                                          float shoalFragmentation, float shallowFragmentation) {
         int area = water.length;
         byte[] layers = new byte[area];
         int[] distance = new int[area];
@@ -457,15 +462,66 @@ public final class NaturalWaterGenerator {
 
         int shoalLimit = Math.max(1, Math.round(Math.max(0f, shoalWidth)));
         int shallowLimit = shoalLimit + Math.max(0, Math.round(Math.max(0f, shallowWidth)));
+        boolean useWarp = depthWarpMag > 0.001f && depthWarpScale > 0.0001f;
+        boolean useFragShoal = shoalFragmentation > 0.001f;
+        boolean useFragShallow = shallowFragmentation > 0.001f;
         for (int i = 0; i < area; i++) {
             if (!water[i]) continue;
+
+            int baseLayer;
             if (distance[i] <= shoalLimit) {
-                layers[i] = shoal;
+                baseLayer = shoal;
             } else if (distance[i] <= shallowLimit) {
-                layers[i] = shallow;
+                baseLayer = shallow;
             } else {
-                layers[i] = deep;
+                baseLayer = deep;
             }
+
+            int layer = baseLayer;
+            if (useWarp) {
+                int x = i % width;
+                int y = i / width;
+                float warp = (float)Simplex.noise2d(seed + 777, 1, 1f,
+                    1f / Math.max(1f, depthWarpScale), x + 10f, y + 10f) * 2f - 1f;
+                float shifted = distance[i] + warp * depthWarpMag;
+
+                int targetLayer;
+                if (shifted <= shoalLimit) {
+                    targetLayer = shoal;
+                } else if (shifted <= shallowLimit) {
+                    targetLayer = shallow;
+                } else {
+                    targetLayer = deep;
+                }
+
+                if (baseLayer == shoal) {
+                    layer = Math.min(targetLayer, shallow);
+                } else if (baseLayer == deep) {
+                    layer = Math.max(targetLayer, shallow);
+                } else {
+                    layer = targetLayer;
+                }
+            }
+
+            if (layer == shoal && useFragShoal && shoalLimit > 0) {
+                int x = i % width;
+                int y = i / width;
+                float t = (float)distance[i] / shoalLimit;
+                float keepNoise = (float)Simplex.noise2d(seed + 111, 1, 1f,
+                    0.04f, x + 10f, y + 10f) * 2f - 1f;
+                float threshold = t * shoalFragmentation - 1f;
+                if (keepNoise < threshold) layer = land;
+            } else if (layer == shallow && useFragShallow && shallowLimit > shoalLimit) {
+                int x = i % width;
+                int y = i / width;
+                float t = (float)(distance[i] - shoalLimit) / (shallowLimit - shoalLimit);
+                float keepNoise = (float)Simplex.noise2d(seed + 222, 1, 1f,
+                    0.04f, x + 10f, y + 10f) * 2f - 1f;
+                float threshold = t * shallowFragmentation - 1f;
+                if (keepNoise < threshold) layer = shoal;
+            }
+
+            layers[i] = (byte)layer;
         }
         return layers;
     }
@@ -486,6 +542,10 @@ public final class NaturalWaterGenerator {
         public float shoalWidth = 2f;
         public float shallowWidth = 5f;
         public boolean cleanup = true;
+        public float depthWarpScale = 0.02f;
+        public float depthWarpMag = 3f;
+        public float shoalFragmentation;
+        public float shallowFragmentation;
         public boolean allowParallel = true;
 
         public Config size(int width, int height) {
