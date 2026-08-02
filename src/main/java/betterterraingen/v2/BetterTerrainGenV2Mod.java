@@ -7,10 +7,13 @@ import mindustry.io.JsonIO;
 import mindustry.maps.Maps;
 import mindustry.maps.filters.GenerateFilter;
 import mindustry.mod.Mod;
+import mindustry.ui.dialogs.SettingsMenuDialog;
 
 import java.util.Arrays;
 
 public class BetterTerrainGenV2Mod extends Mod {
+    public static boolean bekBundled = false;
+
     private static final String classTag = "NaturalWater";
 
     public BetterTerrainGenV2Mod() {
@@ -20,6 +23,10 @@ public class BetterTerrainGenV2Mod extends Mod {
     @Override
     public void init() {
         registerFilter();
+    }
+
+    public void bekBuildSettings(SettingsMenuDialog.SettingsTable table) {
+        // Better Terrain Gen V2 has no user settings.
     }
 
     public static synchronized void registerFilter() {
