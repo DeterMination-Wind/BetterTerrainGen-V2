@@ -43,7 +43,19 @@ jobs:
             chmod +x ./gradlew
             gradle_cmd="./gradlew"
           fi
-          "$gradle_cmd" --no-daemon clean releaseBuild "-PreleaseVersion=${version}"
+          "$gradle_cmd" --no-daemon clean releaseBuild "-PreleaseVersion=${version}" > /tmp/gradle-build.log 2>&1 || {
+            echo "BUILD FAILED";
+            tail -120 /tmp/gradle-build.log;
+            cp /tmp/gradle-build.log "$GITHUB_WORKSPACE/gradle-build.log";
+            exit 1;
+          }
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: gradle-build.log
 
       - name: Verify mod descriptor in jar
         shell: bash
