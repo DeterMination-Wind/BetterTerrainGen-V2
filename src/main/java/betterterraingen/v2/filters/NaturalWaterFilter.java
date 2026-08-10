@@ -1,6 +1,7 @@
 package betterterraingen.v2.filters;
 
 import betterterraingen.v2.NaturalWaterGenerator;
+import betterterraingen.v2.BetterTerrainGenV2Mod;
 import betterterraingen.v2.ui.ModFilterOptions;
 import mindustry.Vars;
 import mindustry.content.Blocks;
@@ -58,6 +59,7 @@ public class NaturalWaterFilter extends GenerateFilter {
 
     @Override
     public void apply(GenerateInput input) {
+        BetterTerrainGenV2Mod.markUsed();
         ensureDefaultFloors();
         CacheEntry entry = ensureCache(input.width, input.height);
         int x = Math.max(0, Math.min(entry.width - 1, input.x));
