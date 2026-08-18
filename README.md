@@ -1,82 +1,45 @@
-[中文](#中文) | [English](#english)
+# Better Terrain Gen V2 / 更自然的地形生成
 
-# 中文
-<h1 align="center">
-  <a href="https://github.com/DeterMination-Wind/BetterTerrainGen-V2/releases/latest"><img src="https://img.shields.io/github/v/release/DeterMination-Wind/BetterTerrainGen-V2?display_name=release&label=Latest%20Release&color=green"></a>
-  <a href="https://github.com/DeterMination-Wind/BetterTerrainGen-V2/releases"><img src="https://img.shields.io/github/downloads/DeterMination-Wind/BetterTerrainGen-V2/total?label=Downloads&color=blue"></a>
-  <a href="https://github.com/DeterMination-Wind/BetterTerrainGen-V2"><img src="https://img.shields.io/github/stars/DeterMination-Wind/BetterTerrainGen-V2?style=flat&label=Star%20this%20mod!&color=yellow"></a>
-</h1>
+## 中文
 
-## Better Terrain Gen V2
+> 让自动生成的水域更像自然地貌，而不是规则涂块。
 
-让地图编辑器里的水域更像自然形成的湖泊、海岸与浅滩。
+Better Terrain Gen V2 为 Mindustry 地图编辑器补充自然水体生成能力，让湖泊、海岸、浅滩和深水之间的过渡更自然。它适合希望快速得到可用地形、又不想在生成后反复手工修形的地图作者。
 
-### 特点
+这个模组只服务于地图编辑和生成流程，不增加游戏内容，也不会改变已经开始的普通战斗。
 
-- 湖泊与海岸拥有自然的轮廓。
-- 水域会从浅滩、浅水逐渐过渡到深水。
-- 噪声扭曲的深度过渡（Depth Warp），让海岸线、湖岸线更加自然不规则。
-- 可调节浅滩/浅水零散度，生成零散的天然小岛。
-- 可自定义浅滩、浅水与深水使用的地板方块，并可用"自然化清理"开关一键移除孤立水块与小岛。
-- 自动减少零散小水块和不自然的小岛。
-- 保留地图中的建筑、核心与出生点。
-- 支持随机种子和常用的水域调整选项。
+### 需求与安装
 
-### 需求
+从 Release 下载桌面与 Android 通用的 BetterTerrainGen-V2 JAR，放入 Mindustry 的 mods 目录并启用。
 
-- Mindustry v159 及以上（桌面与 Android 均可，产物内置 `classes.dex`）。
+地图编辑器的“生成地形”中还提供“遗迹生成”滤镜。Overlay 模式需要先在地图上放置过滤器中指定的 Overlay 标记；Auto 模式默认只处理陆地，中心密度为 25%，最小中心间距为 24 格，并由过滤器种子决定结果。遗迹步骤支持噪声筛选、地板/墙体/移除墙体/保留地板，以及几何、曼哈顿和切比雪夫距离。推荐先运行“自然水体”，再运行“遗迹生成”。
 
 ### 构建
 
-1. 需要 JDK 17。Android 打包步骤（D8）会从 `ANDROID_SDK_ROOT` / `ANDROID_HOME` / `D8_PATH` 自动查找。
-2. 运行 `./gradlew releaseBuild`，可用 `-PreleaseVersion=x.y.z` 指定产物版本号。
-3. 产物为 `dist/BetterTerrainGen-V2-<版本>.jar`，已内置 `mod.json` 与 `classes.dex`，桌面与 Android 通用。
+~~~powershell
+.\gradlew.bat releaseBuild
+~~~
 
-### 使用
+可使用 -PreleaseVersion=x.y.z 指定产物版本号。输出位于 dist/。
 
-1. 下载本页面发布的 `.jar` 文件。
-2. 将文件放入 Mindustry 的 `mods` 文件夹。
-3. 重启游戏，在地图编辑器的“生成地形”中选择“自然水体”。
+## English
 
-### 作者
+> Make generated water look like a landscape instead of a paint bucket.
 
-DeterMination-Wind
+Better Terrain Gen V2 adds a natural-water workflow to the Mindustry map editor. It creates more convincing transitions between lakes, coastlines, shallows, and deep water, so map authors can start from a useful terrain shape instead of repairing every shoreline by hand.
 
----
+The mod focuses on map generation and editing. It adds no gameplay content and does not affect an ordinary battle after the map is created.
 
-# English
+### Requirements and install
 
-## Better Terrain Gen V2
+Download the desktop-and-Android BetterTerrainGen-V2 JAR from Releases, put it in Mindustry's mods directory, and enable it.
 
-Makes water in the Mindustry map editor feel more like naturally formed lakes, coastlines, and shallows.
-
-### Features
-
-- Natural-looking lake and coastline shapes.
-- Smooth transitions from shoals to shallow and deep water.
-- Noise-warped depth layers (Depth Warp) for more irregular, natural coastlines and lake shores.
-- Shoal/shallow fragmentation sliders that create scattered natural islets.
-- Custom floor blocks for shoals, shallow water, and deep water, plus a `Natural Cleanup` toggle to remove isolated water patches and islets.
-- Fewer isolated water patches and unnatural islands.
-- Buildings, cores, and spawn points are preserved.
-- Supports random seeds and practical water-shaping options.
-
-### Requirements
-
-- Mindustry v159+ (desktop and Android; the artifact bundles `classes.dex`).
+The map editor's `Generate Terrain` dialog also provides `Ruin Generate`. Overlay mode requires placing the selected overlay marker on the map first. Auto mode processes land by default, uses 25% center density and 24-tile minimum spacing, and is deterministic for the filter seed. Ruin steps support noise selection, floor/wall/remove-wall/preserve-floor operations, and geometric, Manhattan, or Chebyshev distance. For a natural result, run `Natural Water` before `Ruin Generate`.
 
 ### Build
 
-1. Requires JDK 17. The Android dex step (D8) is located automatically via `ANDROID_SDK_ROOT` / `ANDROID_HOME` / `D8_PATH`.
-2. Run `./gradlew releaseBuild`, optionally with `-PreleaseVersion=x.y.z` to set the artifact version.
-3. The output is `dist/BetterTerrainGen-V2-<version>.jar`, which already contains `mod.json` and `classes.dex` and works on both desktop and Android.
+~~~powershell
+.\gradlew.bat releaseBuild
+~~~
 
-### Use
-
-1. Download the `.jar` file from the release on this page.
-2. Place it in Mindustry's `mods` folder.
-3. Restart the game and choose `Natural Water` from `Generate Terrain` in the map editor.
-
-### Author
-
-DeterMination-Wind
+Use -PreleaseVersion=x.y.z to set the artifact version. Outputs are written to dist/.
