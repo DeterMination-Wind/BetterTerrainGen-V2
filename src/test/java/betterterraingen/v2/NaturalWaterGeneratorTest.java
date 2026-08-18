@@ -44,6 +44,7 @@ public final class NaturalWaterGeneratorTest {
         filterRegistrationAndSerializationAreStable();
         filterClearsNaturalTerrainAndPreservesEditorMarkers();
         optionsCanBeCreatedAcrossClassLoaderBoundary();
+        RuinGenerateFilterTest.run();
         System.out.println("NaturalWaterGeneratorTest: all checks passed");
     }
 
